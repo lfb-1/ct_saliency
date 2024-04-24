@@ -9,7 +9,6 @@ from torch.utils.data import DataLoader
 from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam.utils.image import show_cam_on_image
 from volumentations import CenterCrop, Compose, Flip
-from captum.attr import GuidedGradCam
 import matplotlib.pyplot as plt
 import matplotlib.image
 
@@ -82,7 +81,6 @@ model.eval()
 
 target_layers = [model.enc_temporal_transformer.layers[-1][3][0]]
 
-guided_gc = GuidedGradCam(model, model.enc_spatial_transformer.layers[-1][3][0])
 
 cam = GradCAM(
     model=model,
