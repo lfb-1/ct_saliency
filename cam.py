@@ -99,6 +99,7 @@ def plot_cam(cam, dataloader):
         input_norm *= 255
         output = 0.3 * grayscale_cam + 0.7 * input_norm
         output = np.rot90(output,3, axes=(1,2))
+        #! FLip left-right to make orientation consisent with radiology habits 
         output = np.flip(output,axis=2)
         if label == 1:
             for i in range(164):
