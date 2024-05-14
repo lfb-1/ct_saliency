@@ -90,21 +90,48 @@ cam = GradCAM(
 
 
 def plot_cam(cam, dataloader):
+    # count for how many class 0 and class 1 images to print
+    maxcount0 = 30
+    maxcount1 = 30
+    count0 = 0
+    count1 = 0
+    
     for batch_idx, (input, label, idx, _) in enumerate(dataloader):
-        input = input.cuda()
-        label = label.cuda()
-        grayscale_cam = cam(input, targets=label) * 255
-        input_norm = input.squeeze().detach().cpu().numpy()
-        input_norm = (input_norm - input_norm.min()) / (input_norm.max() - input_norm.min())
-        input_norm *= 255
-        output = 0.3 * grayscale_cam + 0.7 * input_norm
-        output = np.rot90(output,3, axes=(1,2))
-        #! FLip left-right to make orientation consisent with radiology habits 
-        output = np.flip(output,axis=2)
+        input = input
+        label = label
+        if count0>maxcount0 and count1>maxcount1:
+            break
+        
+        if label == 0:
+            if count0>maxcount0: continue
+            else: 
+                count0 += 1
         if label == 1:
-            for i in range(164):
-                matplotlib.image.imsave(f"cam_output/ct_gradcam_{idx.item()}_{i}.png", output[i])
-        print(grayscale_cam.shape)
+            if count1>maxcount1: continue
+            else: 
+                count1 += 1
+            
+        grayscale_cam = cam(input, targets=label) * 255
+        overlay = np.rot90(grayscale_cam,3, axes=(1,2))
+        overlay = np.flip(overlay,axis=2)
+        base_input = np.rot90(input.squeeze().detach().cpu().numpy(), 3, axes=(1,2))
+        base_input = np.flip(base_input,axis=2)
+
+        # Set up the figure and axis
+        fig, axes = plt.subplots(nrows=4, ncols=10,figsize=(31,12))
+
+        # Iterate over the images and axes
+        for i, ax in enumerate(axes.flatten()):
+            ax.imshow(base_input[i*4], cmap='gray')
+            ax.imshow(overlay[i*4], cmap='Reds', alpha=(overlay[i*4]/256)**2)
+            ax.axis('off')  # Remove the axes ticks and labels
+
+        # Adjust the spacing between subplots
+        plt.subplots_adjust(wspace=-0.3, hspace=0)
+
+        # Display the plot
+        print(label)
+        plt.savefig(f"cam_output/label{int(label)}/ct_gradcam_{idx.item()}.png", bbox_inches='tight')
 
 
 plot_cam(cam, train_dataloader)
