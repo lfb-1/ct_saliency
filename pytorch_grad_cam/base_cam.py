@@ -100,7 +100,7 @@ class BaseCAM:
         cam_per_layer = self.compute_cam_per_layer(input_tensor,
                                                    targets,
                                                    eigen_smooth)
-        return self.aggregate_multi_layers(cam_per_layer)
+        return self.aggregate_multi_layers(cam_per_layer), outputs
 
     def get_target_width_height(self,
                                 input_tensor: torch.Tensor) -> Tuple[int, int]:
@@ -137,7 +137,7 @@ class BaseCAM:
                                      layer_grads,
                                      eigen_smooth)
             cam = np.maximum(cam, 0)
-            cam = np.repeat(cam, 2,axis=0)
+            # cam = np.repeat(cam, 2,axis=0)
             scaled = scale_cam_image(cam, target_size)
             cam_per_target_layer.append(scaled[:, None, :])
             # print("scaled[:, None, :]", scaled[:, None, :].shape)
