@@ -114,7 +114,6 @@ def show_cam_on_image(
     if use_rgb:
         heatmap = cv2.cvtColor(heatmap, cv2.COLOR_BGR2RGB)
     heatmap = np.float32(heatmap) / 255
-
     img = (img - img.min()) / (img.max() - img.min())
     img = cv2.merge((img, img, img))
     if np.max(img) > 1:
@@ -126,19 +125,19 @@ def show_cam_on_image(
                 Got: {image_weight}"
         )
 
-    cam = (1 - image_weight) * heatmap + image_weight * img
+    cam = (1 - image_weight) * heatmap * (cv2.merge((mask, mask, mask)) > 0) + image_weight * img
     cam = cam / np.max(cam)
     return np.uint8(255 * cam)
 
 
 def plot_cam(cam, dataloader):
     # count for how many class 0 and class 1 images to print
-    maxcount0 = 30
-    maxcount1 = 30
+    maxcount0 = 50
+    maxcount1 = 50
     count0 = 0
     count1 = 0
 
-    for batch_idx, (input, label, idx, _) in enumerate(dataloader):
+    for batch_idx, (input, label, idx, _, lvef) in enumerate(dataloader):
         input = input.cuda()
         label = label.cuda()
         # if count0 > maxcount0 and count1 > maxcount1:
@@ -161,6 +160,8 @@ def plot_cam(cam, dataloader):
             torch.logical_and(output.sigmoid() >= 0.5, label == 1),
             torch.logical_and(output.sigmoid() < 0.5, label == 0),
         ):
+            continue
+        elif torch.amax(input,dim=(1,2,3,4)) <= 0:
             continue
 
         if count0 > maxcount0 and count1 > maxcount1:
@@ -185,7 +186,7 @@ def plot_cam(cam, dataloader):
         base_input = np.flip(base_input, axis=2)
 
         # Set up the figure and axis
-        fig, axes = plt.subplots(nrows=4, ncols=20, figsize=(31, 12))
+        fig, axes = plt.subplots(nrows=8, ncols=10, figsize=(20, 12))
 
         # Iterate over the images and axes
         for i, ax in enumerate(axes.flatten()):
@@ -196,12 +197,13 @@ def plot_cam(cam, dataloader):
             ax.axis("off")  # Remove the axes ticks and labels
 
         # Adjust the spacing between subplots
-        plt.subplots_adjust(wspace=None, hspace=None)
+        plt.subplots_adjust(wspace=-0.7, hspace=0.1)
+        # fig.tight_layout()
 
         # Display the plot
         print(label)
         plt.savefig(
-            f"cam_output/label{int(label)}/ct_gradcam_{idx.item()}.png",
+            f"cam_output/label{int(label)}/ct_gradcam_{idx.item()}_LVEF{lvef.item()}.png",
             bbox_inches="tight",
         )
 

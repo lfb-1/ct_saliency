@@ -72,4 +72,4 @@ class CTDataset(Dataset):
         # data = torch.cat([data[0].unsqueeze(0), data])
         data = data.unsqueeze(0)
 
-        return data, label, idx, self.weights[label.item()]
+        return data, label, idx, self.weights[label.item()], self.dataset.iloc[idx]['ECHO_lvef_value']
