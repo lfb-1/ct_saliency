@@ -136,7 +136,7 @@ class BaseCAM:
                                      layer_activations,
                                      layer_grads,
                                      eigen_smooth)
-            cam = np.maximum(cam, 0)
+            cam = np.maximum(cam,0)
             # cam = np.repeat(cam, 2,axis=0)
             scaled = scale_cam_image(cam, target_size)
             cam_per_target_layer.append(scaled[:, None, :])

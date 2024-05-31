@@ -17,7 +17,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     "--train_val_dir", default="/home/fbl/Documents/Data/NYPCT", type=str
 )
-parser.add_argument("--weight_dir", default="/home/fbl/Documents/source/pretrains/")
+parser.add_argument(
+    "--weight_dir", default="/home/fbl/Documents/source/pretrains/")
 parser.add_argument("--train_val_name", default=59, type=int)
 parser.add_argument("--batch_size", default=1, type=int)
 args = parser.parse_args()
@@ -34,7 +35,8 @@ df_train = pd.read_csv(
 # )
 gradients = None
 activations = None
-transform = Compose([CenterCrop((160, 160, 164), always_apply=True, p=1)], p=1.0)
+transform = Compose(
+    [CenterCrop((160, 160, 164), always_apply=True, p=1), Flip(0, p=1)], p=1.0)
 
 train_dataset = CTDataset(
     df_train, transform, "/home/fbl/Documents/Data/NYPCT/ct_train/", rotate=False
@@ -117,7 +119,8 @@ def show_cam_on_image(
     img = (img - img.min()) / (img.max() - img.min())
     img = cv2.merge((img, img, img))
     if np.max(img) > 1:
-        raise Exception("The input image should np.float32 in the range [0, 1]")
+        raise Exception(
+            "The input image should np.float32 in the range [0, 1]")
 
     if image_weight < 0 or image_weight > 1:
         raise Exception(
@@ -125,7 +128,8 @@ def show_cam_on_image(
                 Got: {image_weight}"
         )
 
-    cam = (1 - image_weight) * heatmap * (cv2.merge((mask, mask, mask)) > 0) + image_weight * img
+    cam = (1 - image_weight) * heatmap * \
+        (cv2.merge((mask, mask, mask)) > 0) + image_weight * img
     cam = cam / np.max(cam)
     return np.uint8(255 * cam)
 
@@ -161,7 +165,7 @@ def plot_cam(cam, dataloader):
             torch.logical_and(output.sigmoid() < 0.5, label == 0),
         ):
             continue
-        elif torch.amax(input,dim=(1,2,3,4)) <= 0:
+        elif torch.amax(input, dim=(1, 2, 3, 4)) <= 0:
             continue
 
         if count0 > maxcount0 and count1 > maxcount1:
@@ -179,10 +183,13 @@ def plot_cam(cam, dataloader):
                 count1 += 1
 
         overlay = np.rot90(grayscale_cam, 3, axes=(1, 2))
-        overlay = np.flip(overlay, axis=2) / 255
-        overlay[overlay < 0.5] = 0
-        overlay *= 255
-        base_input = np.rot90(input.squeeze().detach().cpu().numpy(), 3, axes=(1, 2))
+        orig_max = np.max(overlay)
+        overlay = np.flip(overlay, axis=2) / np.max(overlay)
+        overlay = (overlay - 0.2) / (np.max(overlay) - 0.2)
+        overlay[overlay < 0] = 0
+        overlay *= orig_max
+        base_input = np.rot90(
+            input.squeeze().detach().cpu().numpy(), 3, axes=(1, 2))
         base_input = np.flip(base_input, axis=2)
 
         # Set up the figure and axis
@@ -192,7 +199,8 @@ def plot_cam(cam, dataloader):
         for i, ax in enumerate(axes.flatten()):
             # ax.imshow(base_input[i * 2], cmap="gray")
             # ax.imshow(overlay[i], cmap="Reds", alpha=(overlay[i] / 256) ** 2)
-            output = show_cam_on_image(base_input[i * 2], overlay[i], use_rgb=True)
+            output = show_cam_on_image(
+                base_input[i * 2], overlay[i], use_rgb=True)
             ax.imshow(output)
             ax.axis("off")  # Remove the axes ticks and labels
 
