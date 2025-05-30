@@ -63,7 +63,7 @@ class BaseCAM:
             cam = get_2d_projection(weighted_activations)
         else:
             cam = weighted_activations.sum(axis=2)
-        return cam.reshape(cam.shape[0],10,10)
+        return cam.reshape(cam.shape[0],9,9)
 
     def forward(self,
                 input_tensor: torch.Tensor,
