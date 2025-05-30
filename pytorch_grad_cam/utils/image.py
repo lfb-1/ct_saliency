@@ -165,7 +165,7 @@ def scale_cam_image(cam, target_size=None):
     cam = cam / (1e-7 + np.max(cam))
     for img in cam:
         if target_size is not None:
-            img = cv2.resize(img, (160,160))
+            img = cv2.resize(img, (144,144))
         result.append(img)
     result = np.float32(result)
 
