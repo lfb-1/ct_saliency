@@ -4,6 +4,8 @@ from azure.storage.blob import BlobServiceClient
 import numpy as np
 import random
 from scipy import ndimage
+from azure.storage.blob import BlobServiceClient
+from azure.identity import DefaultAzureCredential
 import os
 from volumentations import *
 
@@ -12,7 +14,8 @@ class CTDataset(Dataset):
     def __init__(self, data_file, transform, prefix, rotate=False):
         self.dataset = data_file
         self.rotate = rotate
-        # self.blob_service_client = blob_service_client
+        self.blob_service_client = self._init_azure()
+
         self.prefix = prefix
         pos_weight = len(data_file) / (data_file["labels"] == 1).sum()
         neg_weight = len(data_file) / (data_file["labels"] == 0).sum()
@@ -24,6 +27,12 @@ class CTDataset(Dataset):
         #     # torchio.transforms.RandomFlip
         # }
         self.transform = transform
+    
+    def _init_azure(self):
+        account_url = "https://eus2prdcornellaiechosa.blob.core.windows.net"
+        default_credential = DefaultAzureCredential(managed_identity_client_id="b1d972cf-3885-46d8-8021-d553d2871d76")
+        blob_service_client = BlobServiceClient(account_url, credential=default_credential)
+        return blob_service_client
 
     def __len__(self):
         return len(self.dataset)
@@ -50,14 +59,16 @@ class CTDataset(Dataset):
         return augmented_volume
 
     def __getitem__(self, idx):
-        fname = self.dataset.iloc[idx]["Path"]
-        # blob_client = self.blob_service_client.get_blob_client(
-        #     container="echo-data-lake", blob=fname
-        # )
-        # download_stream = blob_client.download_blob()
-        # download_arr = np.frombuffer(download_stream.readall(), dtype=np.float64)
-        # data = np.array(download_arr).reshape(164, 164, 164)
-        data = np.load(os.path.join(self.prefix, fname.split("/")[-1]))
+        fname = self.dataset.iloc[idx]["Path_New"]
+        blob_client = self.blob_service_client.get_blob_client(
+            container="echo-data-lake", blob=fname
+        )
+        download_stream = blob_client.download_blob()
+        download_arr = np.frombuffer(download_stream.readall(), dtype=np.float64)
+        data = np.array(download_arr).reshape(164, 164, 164)
+        data[data < -1000] = -1000
+        data[data > 1000] = 1000
+        # data = np.load(os.path.join(self.prefix, fname.split("/")[-1]))
 
         #!
         # if self.rotate:
