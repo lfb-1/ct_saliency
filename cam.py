@@ -15,17 +15,21 @@ import cv2
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "--train_val_dir", default="/home/fbl/Documents/Data/NYPCT", type=str
+    "--train_val_dir", default="/mnt/azureml/cr/j/9077c72b6a5f4295b4091f38eb00753d/cap/data-capability/wd/data_dir/bed_remove_raw/298_Preprocessed_CT_ECHO_columbia_test_new.csv", type=str
 )
 parser.add_argument(
-    "--weight_dir", default="/home/fbl/Documents/source/pretrains/")
+    "--weight_dir", default="/mnt/azureml/cr/j/9077c72b6a5f4295b4091f38eb00753d/cap/data-capability/wd/output_dir/bed_removal_final_40k/123_16_model.pth.tar")
 parser.add_argument("--train_val_name", default=59, type=int)
 parser.add_argument("--batch_size", default=1, type=int)
 args = parser.parse_args()
+# df_train = pd.read_csv(
+#     os.path.join(
+#         args.train_val_dir, f"train_dataset_{args.train_val_name}_fixed_pixel.csv"
+#     )
+# )
+
 df_train = pd.read_csv(
-    os.path.join(
-        args.train_val_dir, f"train_dataset_{args.train_val_name}_fixed_pixel.csv"
-    )
+    args.train_val_dir
 )
 
 # df_val = pd.read_csv(
@@ -35,8 +39,7 @@ df_train = pd.read_csv(
 # )
 gradients = None
 activations = None
-transform = Compose(
-    [CenterCrop((160, 160, 164), always_apply=True, p=1), Flip(0, p=1)], p=1.0)
+transform = Compose([CenterCrop((144, 144, 164), always_apply=True, p=1)], p=1.0)
 
 train_dataset = CTDataset(
     df_train, transform, "/home/fbl/Documents/Data/NYPCT/ct_train/", rotate=False
@@ -54,7 +57,7 @@ device = torch.device("cuda")
 model = CTViT_Encoder(
     dim=512,
     codebook_size=8192,
-    image_size=160,
+    image_size=144,
     patch_size=16,
     temporal_patch_size=2,
     spatial_depth=4,
@@ -64,12 +67,12 @@ model = CTViT_Encoder(
 )
 
 model = model.to(device)
-new_pt = extract_encoder(os.path.join(args.weight_dir, "ctvit_pretrained.pt"))
-model.load_state_dict(new_pt)
+# new_pt = extract_encoder(os.path.join(args.weight_dir, "ctvit_pretrained.pt"))
+# model.load_state_dict(new_pt)
 
 model_best = torch.load(
-    os.path.join(args.weight_dir, "model_best_0.7607340012073844.pth.tar")
-)["model"]
+    args.weight_dir
+)["state_dict"]
 model.load_state_dict(model_best)
 
 print("Model and weight loaded")
@@ -160,9 +163,9 @@ def plot_cam(cam, dataloader):
 
         grayscale_cam, output = cam(input, targets=label)
         grayscale_cam = grayscale_cam * 255
-        if torch.logical_or(
-            torch.logical_and(output.sigmoid() >= 0.5, label == 1),
-            torch.logical_and(output.sigmoid() < 0.5, label == 0),
+        if not torch.logical_or(
+            torch.logical_and(output.sigmoid() < 0.5, label == 1),
+            torch.logical_and(output.sigmoid() >= 0.5, label == 0),
         ):
             continue
         elif torch.amax(input, dim=(1, 2, 3, 4)) <= 0:
@@ -183,13 +186,16 @@ def plot_cam(cam, dataloader):
                 count1 += 1
 
         overlay = np.rot90(grayscale_cam, 3, axes=(1, 2))
+        # overlay = grayscale_cam
         orig_max = np.max(overlay)
+        # overlay = overlay / orig_max
         overlay = np.flip(overlay, axis=2) / np.max(overlay)
         overlay = (overlay - 0.2) / (np.max(overlay) - 0.2)
         overlay[overlay < 0] = 0
         overlay *= orig_max
         base_input = np.rot90(
             input.squeeze().detach().cpu().numpy(), 3, axes=(1, 2))
+        # base_input = input.squeeze().detach().cpu().numpy()
         base_input = np.flip(base_input, axis=2)
 
         # Set up the figure and axis
@@ -214,6 +220,9 @@ def plot_cam(cam, dataloader):
             f"cam_output/label{int(label)}/ct_gradcam_{idx.item()}_LVEF{lvef.item()}.png",
             bbox_inches="tight",
         )
+        # plt.savefig(
+        #     f"/mnt/azureml/cr/j/9077c72b6a5f4295b4091f38eb00753d/cap/data-capability/wd/output_dir/bed_removal_final_40k/cam_output/label{int(label)}/ct_gradcam_{idx.item()}_LVEF{lvef.item()}.png", bbox_inches="tight"
+        # )
 
 
 plot_cam(cam, train_dataloader)
