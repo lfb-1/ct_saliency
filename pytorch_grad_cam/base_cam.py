@@ -46,7 +46,7 @@ class BaseCAM:
                       targets: List[torch.nn.Module],
                       activations: torch.Tensor,
                       grads: torch.Tensor,
-                      eigen_smooth: bool = False) -> np.ndarray:
+                      eigen_smooth: bool = True) -> np.ndarray:
 
         weights = self.get_cam_weights(input_tensor,
                                        target_layer,
@@ -63,12 +63,13 @@ class BaseCAM:
             cam = get_2d_projection(weighted_activations)
         else:
             cam = weighted_activations.sum(axis=2)
+        return cam
         return cam.reshape(cam.shape[0],9,9)
 
     def forward(self,
                 input_tensor: torch.Tensor,
                 targets: List[torch.nn.Module],
-                eigen_smooth: bool = False) -> np.ndarray:
+                eigen_smooth: bool = True) -> np.ndarray:
 
         if self.cuda:
             input_tensor = input_tensor.cuda()
@@ -112,14 +113,15 @@ class BaseCAM:
             input_tensor: torch.Tensor,
             targets: List[torch.nn.Module],
             eigen_smooth: bool) -> np.ndarray:
-        activations_list = [a.permute(1,0,2).cpu().data.numpy()
+        activations_list = [a.cpu().data.numpy()
                             for a in self.activations_and_grads.activations]
-        grads_list = [g.permute(1,0,2).cpu().data.numpy()
+        grads_list = [g.cpu().data.numpy()
                       for g in self.activations_and_grads.gradients]
         # print(activations_list[0].shape,grads_list[0].shape)
         target_size = self.get_target_width_height(input_tensor)
 
         cam_per_target_layer = []
+        cam_focus = []
         # Loop over the saliency image from every layer
         for i in range(len(self.target_layers)):
             target_layer = self.target_layers[i]
@@ -130,6 +132,9 @@ class BaseCAM:
             if i < len(grads_list):
                 layer_grads = grads_list[i]
 
+            if i == 0:
+                layer_activations = np.transpose(layer_activations, (1, 0, 2))
+                layer_grads = np.transpose(layer_grads, (1, 0, 2))
             cam = self.get_cam_image(input_tensor,
                                      target_layer,
                                      targets,
@@ -138,18 +143,24 @@ class BaseCAM:
                                      eigen_smooth)
             cam = np.maximum(cam,0)
             # cam = np.repeat(cam, 2,axis=0)
+            cam = np.transpose(cam, (1,0))
+            cam = cam.reshape(cam.shape[0], 9, 9)
+            # cam_focus.append(cam)
             scaled = scale_cam_image(cam, target_size)
-            cam_per_target_layer.append(scaled[:, None, :])
+            cam_per_target_layer.append(scaled[None, :])
             # print("scaled[:, None, :]", scaled[:, None, :].shape)
-
         return cam_per_target_layer
 
     def aggregate_multi_layers(
             self,
             cam_per_target_layer: np.ndarray) -> np.ndarray:
-        cam_per_target_layer = np.concatenate(cam_per_target_layer, axis=1)
-        cam_per_target_layer = np.maximum(cam_per_target_layer, 0)
-        result = np.mean(cam_per_target_layer, axis=1)
+        cam_per_target_layer = np.concatenate(cam_per_target_layer, axis=0)
+        # return scale_cam_image(cam_per_target_layer[1])
+        # cam_per_target_layer = np.maximum(cam_per_target_layer, 0)
+        cam_per_target_layer = np.mean(cam_per_target_layer, axis=0)
+        # cam_per_target_layer = 0.3 * cam_per_target_layer[0] + 0.7 * cam_per_target_layer[1]
+        result = cam_per_target_layer
+        # result = np.mean(cam_per_target_layer, axis=0)
         return scale_cam_image(result)
 
     def forward_augmentation_smoothing(self,

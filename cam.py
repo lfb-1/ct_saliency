@@ -15,10 +15,10 @@ import cv2
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "--train_val_dir", default="/mnt/azureml/cr/j/9077c72b6a5f4295b4091f38eb00753d/cap/data-capability/wd/data_dir/bed_remove_raw/298_Preprocessed_CT_ECHO_columbia_test_new.csv", type=str
+    "--train_val_dir", default="/mnt/azureml/cr/j/58dd9485ffae4bbd8d39316bb3ce9c93/cap/data-capability/wd/data_dir/bed_remove_raw/298_Preprocessed_CT_ECHO_columbia_test_new.csv", type=str
 )
 parser.add_argument(
-    "--weight_dir", default="/mnt/azureml/cr/j/9077c72b6a5f4295b4091f38eb00753d/cap/data-capability/wd/output_dir/bed_removal_final_40k/123_16_model.pth.tar")
+    "--weight_dir", default="/mnt/azureml/cr/j/58dd9485ffae4bbd8d39316bb3ce9c93/cap/data-capability/wd/output_dir/bed_removal_final_40k/123_16_model.pth.tar")
 parser.add_argument("--train_val_name", default=59, type=int)
 parser.add_argument("--batch_size", default=1, type=int)
 args = parser.parse_args()
@@ -87,7 +87,7 @@ def reshape_transform(tensor, height=7, width=7):
 
 model.eval()
 
-target_layers = [model.enc_temporal_transformer.layers[-1][3][0]]
+target_layers = [model.enc_spatial_transformer.layers[-1][3][0], model.enc_temporal_transformer.layers[-1][3][0]]
 
 
 cam = GradCAM(
@@ -163,10 +163,9 @@ def plot_cam(cam, dataloader):
 
         grayscale_cam, output = cam(input, targets=label)
         grayscale_cam = grayscale_cam * 255
-        if not torch.logical_or(
-            torch.logical_and(output.sigmoid() < 0.5, label == 1),
-            torch.logical_and(output.sigmoid() >= 0.5, label == 0),
-        ):
+        if output.sigmoid() < 0.5 and label == 1:
+            continue
+        elif output.sigmoid() >= 0.5 and label == 0:
             continue
         elif torch.amax(input, dim=(1, 2, 3, 4)) <= 0:
             continue
@@ -175,6 +174,7 @@ def plot_cam(cam, dataloader):
             break
 
         if label == 0:
+            continue
             if count0 > maxcount0:
                 continue
             else:
@@ -190,7 +190,7 @@ def plot_cam(cam, dataloader):
         orig_max = np.max(overlay)
         # overlay = overlay / orig_max
         overlay = np.flip(overlay, axis=2) / np.max(overlay)
-        overlay = (overlay - 0.2) / (np.max(overlay) - 0.2)
+        overlay = (overlay - 0.0) / (np.max(overlay) - 0.0)
         overlay[overlay < 0] = 0
         overlay *= orig_max
         base_input = np.rot90(
