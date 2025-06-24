@@ -132,23 +132,42 @@ class BaseCAM:
             if i < len(grads_list):
                 layer_grads = grads_list[i]
 
-            if i == 0:
-                layer_activations = np.transpose(layer_activations, (1, 0, 2))
-                layer_grads = np.transpose(layer_grads, (1, 0, 2))
             cam = self.get_cam_image(input_tensor,
                                      target_layer,
                                      targets,
                                      layer_activations,
                                      layer_grads,
                                      eigen_smooth)
-            cam = np.maximum(cam,0)
-            # cam = np.repeat(cam, 2,axis=0)
-            cam = np.transpose(cam, (1,0))
-            cam = cam.reshape(cam.shape[0], 9, 9)
-            # cam_focus.append(cam)
-            scaled = scale_cam_image(cam, target_size)
-            cam_per_target_layer.append(scaled[None, :])
-            # print("scaled[:, None, :]", scaled[:, None, :].shape)
+            if i == 0:
+                #temporal
+                # cam = np.maximum(cam, 0)
+                # cam = cam.reshape(cam.shape[0], 9, 9)
+                tmp = cam.mean(1)
+                # tmp = (tmp - tmp.min()) / (tmp.max() - tmp.min()) + 0.0001
+                cam_focus.append(tmp)
+                # scaled = scale_cam_image(cam, target_size)
+                # cam_per_target_layer.append(scaled[None, :])
+            else:
+                cam = np.maximum(cam, 0)
+                cam = np.transpose(cam, (1,0))
+                cam = cam.reshape(cam.shape[0], 9, 9)
+                cam = cam * cam_focus[0][:, None, None]
+                scaled = scale_cam_image(cam, target_size)
+                cam_per_target_layer.append(scaled[None, :])
+
+
+
+        #     if i == 1:
+        #         cam = np.maximum(cam,0)
+        #     # cam = np.repeat(cam, 2,axis=0)
+        #     if i== 1:
+        #         cam = np.transpose(cam, (1,0))
+
+        #     cam = cam.reshape(cam.shape[0], 9, 9)
+        #     cam_focus.append(cam)
+        #     scaled = scale_cam_image(cam, target_size)
+        #     cam_per_target_layer.append(scaled[None, :])
+        # import ipdb; ipdb.set_trace()
         return cam_per_target_layer
 
     def aggregate_multi_layers(
@@ -156,7 +175,7 @@ class BaseCAM:
             cam_per_target_layer: np.ndarray) -> np.ndarray:
         cam_per_target_layer = np.concatenate(cam_per_target_layer, axis=0)
         # return scale_cam_image(cam_per_target_layer[1])
-        # cam_per_target_layer = np.maximum(cam_per_target_layer, 0)
+        cam_per_target_layer = np.maximum(cam_per_target_layer, 0)
         cam_per_target_layer = np.mean(cam_per_target_layer, axis=0)
         # cam_per_target_layer = 0.3 * cam_per_target_layer[0] + 0.7 * cam_per_target_layer[1]
         result = cam_per_target_layer

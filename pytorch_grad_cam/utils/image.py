@@ -161,8 +161,8 @@ def show_factorization_on_image(img: np.ndarray,
 
 def scale_cam_image(cam, target_size=None):
     result = []
-    cam = cam - np.min(cam)
-    cam = cam / (1e-7 + np.max(cam))
+    # cam = cam - np.min(cam)
+    # cam = cam / (1e-7 + np.max(cam))
     for img in cam:
         if target_size is not None:
             img = cv2.resize(img, (target_size[1],target_size[2]))

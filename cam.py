@@ -87,7 +87,7 @@ def reshape_transform(tensor, height=7, width=7):
 
 model.eval()
 
-target_layers = [model.enc_spatial_transformer.layers[-1][3][0], model.enc_temporal_transformer.layers[-1][3][0]]
+target_layers = [model.enc_temporal_transformer.layers[-1][3][0], model.enc_spatial_transformer.layers[-1][3][0]]
 
 
 cam = GradCAM(
@@ -144,7 +144,7 @@ def plot_cam(cam, dataloader):
     count0 = 0
     count1 = 0
 
-    for batch_idx, (input, label, idx, _, lvef) in enumerate(dataloader):
+    for batch_idx, (input, label, idx, _, lvef, ctacc) in enumerate(dataloader):
         input = input.cuda()
         label = label.cuda()
         # if count0 > maxcount0 and count1 > maxcount1:
@@ -190,7 +190,7 @@ def plot_cam(cam, dataloader):
         orig_max = np.max(overlay)
         # overlay = overlay / orig_max
         overlay = np.flip(overlay, axis=2) / np.max(overlay)
-        overlay = (overlay - 0.0) / (np.max(overlay) - 0.0)
+        overlay = (overlay - 0.005) / (np.max(overlay) - 0.005)
         overlay[overlay < 0] = 0
         overlay *= orig_max
         base_input = np.rot90(
@@ -217,7 +217,7 @@ def plot_cam(cam, dataloader):
         # Display the plot
         print(label)
         plt.savefig(
-            f"cam_output/label{int(label)}/ct_gradcam_{idx.item()}_LVEF{lvef.item()}.png",
+            f"cam_output/label{int(label)}/ct_gradcam_{idx.item()}_LVEF{lvef.item()}_{ctacc[0]}.png",
             bbox_inches="tight",
         )
         # plt.savefig(

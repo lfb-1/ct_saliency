@@ -22,5 +22,5 @@ class GradCAM(BaseCAM):
         print("grads", grads.shape)
 
         # changed
-        # return np.mean(grads, axis=1, keepdims=True)
+        return np.mean(grads, axis=1, keepdims=True)
         return np.mean(grads, axis=(1,2),keepdims=True)
